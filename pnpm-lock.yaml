@@ -11,6 +11,9 @@ importers:
       '@types/three':
         specifier: ^0.163.0
         version: 0.163.0
+      defu:
+        specifier: ^6.1.4
+        version: 6.1.4
       three:
         specifier: ^0.163.0
         version: 0.163.0
@@ -2173,7 +2176,6 @@ packages:
 
   /defu@6.1.4:
     resolution: {integrity: sha512-mEQCMmwJu317oSz8CwdIOdwf3xMif1ttiM8LTufzc3g6kR+9Pe236twL8j3IYT1F7GfRgGcW6MWxzZjLIkuHIg==}
-    dev: true
 
   /destr@2.0.3:
     resolution: {integrity: sha512-2N3BOUU4gYMpTP24s5rF5iP7BDr7uNTCs4ozw3kf/eKfvWSIu93GEBi5m427YoyJoeOzQ5smuu4nNAPGb8idSQ==}

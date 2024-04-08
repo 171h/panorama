@@ -45,6 +45,11 @@
     "typecheck": "tsc --noEmit",
     "prepare": "simple-git-hooks"
   },
+  "dependencies": {
+    "@types/three": "^0.163.0",
+    "defu": "^6.1.4",
+    "three": "^0.163.0"
+  },
   "devDependencies": {
     "@antfu/eslint-config": "^2.12.2",
     "@antfu/ni": "^0.21.12",
@@ -67,9 +72,5 @@
   },
   "lint-staged": {
     "*": "eslint --fix"
-  },
-  "dependencies": {
-    "@types/three": "^0.163.0",
-    "three": "^0.163.0"
   }
 }

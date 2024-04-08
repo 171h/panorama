@@ -1,140 +1,175 @@
-// import * as THREE from 'three'
-// import * as Nodes from 'three/nodes'
+/* eslint-disable ts/no-use-before-define */
+import * as THREE from 'three'
+import Stats from 'three/addons/libs/stats.module.js'
+import { GUI } from 'three/addons/libs/lil-gui.module.min.js'
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+import { EXRLoader } from 'three/addons/loaders/EXRLoader.js'
+import { defu } from 'defu'
 
-// import WebGPU from 'three/examples/jsm/capabilities/WebGPU.js'
-// import WebGPURenderer from 'three/examples/jsm/renderers/webgpu/WebGPURenderer.js'
+export function panorama($el: HTMLElement, options?: any) {
+  const panorama = new Panorama($el, options)
+  const animate = () => {
+    requestAnimationFrame(animate)
+    panorama.stats.begin()
+    panorama.render()
+    panorama.stats.end()
+  }
+  animate()
+}
 
-// import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-// import { RGBMLoader } from 'three/examples/jsm/loaders/RGBMLoader.js'
+class Panorama {
+  params = {
+    envMap: 'PNG',
+    roughness: 0.0,
+    metalness: 0.0,
+    exposure: 1.0,
+    debug: false,
+  }
 
-// import { GUI } from 'three/examples/jsm/libs/lil-gui.module.min.js'
-// import Stats from 'three/examples/jsm/libs/stats.module.js'
+  el: HTMLElement
+  container!: HTMLElement
+  stats!: Stats
+  camera!: THREE.PerspectiveCamera
+  scene!: THREE.Scene
+  renderer!: THREE.WebGLRenderer
+  controls!: OrbitControls
+  torusMesh!: THREE.Mesh
+  planeMesh!: THREE.Mesh
+  pngCubeRenderTarget!: any
+  exrCubeRenderTarget!: any
+  pngBackground!: any
+  exrBackground!: any
 
-// // let camera, scene, renderer, stats
-// // let cube, sphere, torus, material
+  constructor(el: HTMLElement, options?: any) {
+    this.el = el
+    this.params = defu(options, this.params)
+    this.init()
+  }
 
-// // let cubeCamera, cubeRenderTarget
+  init() {
+    this.camera = new THREE.PerspectiveCamera(40, this.el.offsetWidth / this.el.offsetHeight, 1, 1000)
+    this.camera.position.set(0, 0, 120)
 
-// // let controls
+    this.scene = new THREE.Scene()
 
-// // init()
+    this.renderer = new THREE.WebGLRenderer()
+    this.renderer.setPixelRatio(window.devicePixelRatio)
+    this.renderer.setSize(this.el.offsetWidth, this.el.offsetHeight)
 
-// export function init(document: any) {
-//   if (WebGPU.isAvailable() === false) {
-//     document.body.appendChild(WebGPU.getErrorMessage())
+    this.el.appendChild(this.renderer.domElement)
 
-//     throw new Error('No WebGPU support')
-//   }
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping
 
-//   const renderer = new WebGPURenderer({ antialias: true })
-//   renderer.setPixelRatio(document.window.devicePixelRatio)
-//   renderer.setSize(document.window.innerWidth, document.window.innerHeight)
-//   renderer.setAnimationLoop(animation)
-//   renderer.toneMapping = THREE.ACESFilmicToneMapping
-//   document.body.appendChild(renderer.domElement)
+    //
 
-//   document.window.addEventListener('resize', onWindowResized)
+    const torusGeometry = new THREE.TorusKnotGeometry(18, 8, 150, 20)
+    const torusMaterial = new THREE.MeshStandardMaterial({
+      metalness: this.params.metalness,
+      roughness: this.params.roughness,
+      envMapIntensity: 1.0,
+    })
 
-//   const stats = new Stats()
-//   document.body.appendChild(stats.dom)
+    this.torusMesh = new THREE.Mesh(torusGeometry, torusMaterial)
+    this.scene.add(this.torusMesh)
 
-//   const camera = new THREE.PerspectiveCamera(60, document.window.innerWidth / document.window.innerHeight, 1, 1000)
-//   camera.position.z = 75
+    const geometry = new THREE.PlaneGeometry(200, 200)
+    const material = new THREE.MeshBasicMaterial()
 
-//   const scene = new THREE.Scene()
+    this.planeMesh = new THREE.Mesh(geometry, material)
+    this.planeMesh.position.y = -50
+    this.planeMesh.rotation.x = -Math.PI * 0.5
+    this.scene.add(this.planeMesh)
+    THREE.DefaultLoadingManager.onLoad = function () {
+      pmremGenerator.dispose()
+    }
 
-//   const uvTexture = new THREE.TextureLoader().load('./textures/uv_grid_opengl.jpg')
+    new EXRLoader().load('../piz_compressed.exr', (texture) => {
+      texture.mapping = THREE.EquirectangularReflectionMapping
 
-//   const rgbmUrls = ['px.png', 'nx.png', 'py.png', 'ny.png', 'pz.png', 'nz.png']
-//   const texture = new RGBMLoader()
-//     .setMaxRange(16)
-//     .setPath('./textures/cube/pisaRGBM16/')
-//     .loadCubemap(rgbmUrls)
+      this.exrCubeRenderTarget = pmremGenerator.fromEquirectangular(texture)
+      this.exrBackground = texture
+    })
 
-//   texture.name = 'pisaRGBM16'
-//   texture.minFilter = THREE.LinearMipmapLinearFilter
-//   texture.magFilter = THREE.LinearFilter
+    new THREE.TextureLoader().load('DJI_0917.JPG', (texture) => {
+      texture.mapping = THREE.EquirectangularReflectionMapping
+      texture.colorSpace = THREE.SRGBColorSpace
 
-//   scene.background = texture
-//   scene.environment = texture
+      this.pngCubeRenderTarget = pmremGenerator.fromEquirectangular(texture)
+      this.pngBackground = texture
+    })
 
-//   //
+    const pmremGenerator = new THREE.PMREMGenerator(this.renderer)
+    pmremGenerator.compileEquirectangularShader()
 
-//   const cubeRenderTarget = new THREE.WebGLCubeRenderTarget(256)
-//   cubeRenderTarget.texture.type = THREE.HalfFloatType
-//   cubeRenderTarget.texture.minFilter = THREE.LinearMipmapLinearFilter
-//   cubeRenderTarget.texture.magFilter = THREE.LinearFilter
-//   cubeRenderTarget.texture.generateMipmaps = true
+    this.stats = new Stats()
+    this.el.appendChild(this.stats.dom)
 
-//   const cubeCamera = new THREE.CubeCamera(1, 1000, cubeRenderTarget)
+    this.controls = new OrbitControls(this.camera, this.renderer.domElement)
+    this.controls.minDistance = 50
+    this.controls.maxDistance = 300
 
-//   //
+    this.el.addEventListener('resize', this.onWindowResize)
 
-//   const material = new Nodes.MeshStandardNodeMaterial({
-//     envMap: cubeRenderTarget.texture,
-//     roughness: 0.05,
-//     metalness: 1,
-//   })
+    const gui = new GUI()
 
-//   const gui = new GUI()
-//   gui.add(material, 'roughness', 0, 1)
-//   gui.add(material, 'metalness', 0, 1)
-//   gui.add(renderer, 'toneMappingExposure', 0, 2).name('exposure')
+    gui.add(this.params, 'envMap', ['EXR', 'PNG'])
+    gui.add(this.params, 'roughness', 0, 1, 0.01)
+    gui.add(this.params, 'metalness', 0, 1, 0.01)
+    gui.add(this.params, 'exposure', 0, 2, 0.01)
+    gui.add(this.params, 'debug')
+    gui.open()
+  }
 
-//   const sphere = new THREE.Mesh(new THREE.IcosahedronGeometry(15, 8), material)
-//   scene.add(sphere)
+  onWindowResize() {
+    const width = this.el.offsetWidth
+    const height = this.el.offsetHeight
 
-//   const material2 = new THREE.MeshStandardMaterial({
-//     map: uvTexture,
-//     roughness: 0.1,
-//     metalness: 0,
-//   })
+    this.camera.aspect = width / height
+    this.camera.updateProjectionMatrix()
 
-//   const cube = new THREE.Mesh(new THREE.BoxGeometry(15, 15, 15), material2)
-//   scene.add(cube)
+    this.renderer.setSize(width, height)
+  }
 
-//   const torus = new THREE.Mesh(new THREE.TorusKnotGeometry(8, 3, 128, 16), material2)
-//   scene.add(torus)
+  animate() {
+    requestAnimationFrame(() => this.animate)
 
-//   //
+    this.stats.begin()
+    this.render()
+    this.stats.end()
+  }
 
-//   const controls = new OrbitControls(camera, renderer.domElement)
-//   controls.autoRotate = true
-// }
+  render() {
+    this.torusMesh.material.roughness = this.params.roughness
+    this.torusMesh.material.metalness = this.params.metalness
 
-// function onWindowResized() {
-//   renderer.setSize(document.window.innerWidth, document.window.innerHeight)
+    let newEnvMap = this.torusMesh.material.envMap
+    let background = this.scene.background
 
-//   camera.aspect = document.window.innerWidth / document.window.innerHeight
-//   camera.updateProjectionMatrix()
-// }
+    switch (this.params.envMap) {
+      case 'EXR':
+        newEnvMap = this.exrCubeRenderTarget ? this.exrCubeRenderTarget.texture : null
+        background = this.exrBackground
+        break
+      case 'PNG':
+        newEnvMap = this.pngCubeRenderTarget ? this.pngCubeRenderTarget.texture : null
+        background = this.pngBackground
+        break
+    }
 
-// function animation(msTime) {
-//   const time = msTime / 1000
+    if (newEnvMap !== this.torusMesh.material.envMap) {
+      this.torusMesh.material.envMap = newEnvMap
+      this.torusMesh.material.needsUpdate = true
 
-//   cube.position.x = Math.cos(time) * 30
-//   cube.position.y = Math.sin(time) * 30
-//   cube.position.z = Math.sin(time) * 30
+      this.planeMesh.material.map = newEnvMap
+      this.planeMesh.material.needsUpdate = true
+    }
 
-//   cube.rotation.x += 0.02
-//   cube.rotation.y += 0.03
+    this.torusMesh.rotation.y += 0.005
+    this.planeMesh.visible = this.params.debug
 
-//   torus.position.x = Math.cos(time + 10) * 30
-//   torus.position.y = Math.sin(time + 10) * 30
-//   torus.position.z = Math.sin(time + 10) * 30
+    this.scene.background = background
+    this.renderer.toneMappingExposure = this.params.exposure
 
-//   torus.rotation.x += 0.02
-//   torus.rotation.y += 0.03
-
-//   material.visible = false
-
-//   cubeCamera.update(renderer, scene)
-
-//   material.visible = true
-
-//   controls.update()
-
-//   renderer.render(scene, camera)
-
-//   stats.update()
-// }
+    this.renderer.render(this.scene, this.camera)
+  }
+}
