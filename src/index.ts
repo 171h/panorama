@@ -6,7 +6,7 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 import { EXRLoader } from 'three/addons/loaders/EXRLoader.js'
 import { defu } from 'defu'
 
-export function panorama($el: HTMLElement, options?: any) {
+export function panorama($el: HTMLElement, options: Options) {
   const panorama = new Panorama($el, options)
   const animate = () => {
     requestAnimationFrame(animate)
@@ -17,13 +17,23 @@ export function panorama($el: HTMLElement, options?: any) {
   animate()
 }
 
+interface Options {
+  envMap?: string
+  roughness?: number
+  metalness?: number
+  exposure?: number
+  debug?: boolean
+  pngUrl: string
+}
+
 class Panorama {
-  params = {
+  params: Options = {
     envMap: 'PNG',
     roughness: 0.0,
     metalness: 0.0,
     exposure: 1.0,
     debug: false,
+    pngUrl: '',
   }
 
   el: HTMLElement
@@ -40,7 +50,7 @@ class Panorama {
   pngBackground!: any
   exrBackground!: any
 
-  constructor(el: HTMLElement, options?: any) {
+  constructor(el: HTMLElement, options: Options) {
     this.el = el
     this.params = defu(options, this.params)
     this.init()
@@ -90,7 +100,7 @@ class Panorama {
       this.exrBackground = texture
     })
 
-    new THREE.TextureLoader().load('DJI_0917.JPG', (texture) => {
+    new THREE.TextureLoader().load(this.params.pngUrl, (texture) => {
       texture.mapping = THREE.EquirectangularReflectionMapping
       texture.colorSpace = THREE.SRGBColorSpace
 
