@@ -18,11 +18,11 @@ export function panorama($el: HTMLElement, options: Options) {
 }
 
 interface Options {
-  envMap?: string
-  roughness?: number
-  metalness?: number
-  exposure?: number
-  debug?: boolean
+  envMap: string
+  roughness: number
+  metalness: number
+  exposure: number
+  debug: boolean
   pngUrl: string
 }
 
@@ -68,9 +68,8 @@ class Panorama {
 
     this.el.appendChild(this.renderer.domElement)
 
+    // 色调映射
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping
-
-    //
 
     const torusGeometry = new THREE.TorusKnotGeometry(18, 8, 150, 20)
     const torusMaterial = new THREE.MeshStandardMaterial({
