@@ -43,7 +43,8 @@
     "start": "esno src/index.ts",
     "test": "vitest",
     "typecheck": "tsc --noEmit",
-    "prepare": "simple-git-hooks"
+    "prepare": "simple-git-hooks",
+    "ss": "npx vite"
   },
   "dependencies": {
     "@types/three": "^0.163.0",
